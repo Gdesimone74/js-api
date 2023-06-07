@@ -1,0 +1,21 @@
+{
+  "name": "refactor-check",
+  "version": "1.0.0",
+  "description": "Welcome to our technical challenge! We're excited to have you here and hope you're ready to showcase your skills.",
+  "main": "index.js",
+  "scripts": {
+    "test": "jest",
+    "start": "node index.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "jest": "^29.5.0",
+    "sequelize-cli": "^6.6.0"
+  },
+  "dependencies": {
+    "pg": "^8.10.0",
+    "pg-hstore": "^2.3.4",
+    "sequelize": "^6.30.0"
+  }
+}
