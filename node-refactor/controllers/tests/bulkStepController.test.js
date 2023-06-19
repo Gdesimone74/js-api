@@ -6,18 +6,14 @@ const { createBulkSteps } = require('../bulkStepController');
 jest.mock('../../models');
 jest.mock('stream');
 
-// Crear un mock de req y res para las pruebas
 let req, res;
 
-// Mock de la función findByPk del modelo Listing
 models.Listing.findByPk.mockResolvedValue({
   subsidiaryId: 1
 });
 
-// Mock de la función bulkCreate del modelo Step
 models.Step.bulkCreate.mockResolvedValue(true);
 
-// Mock de la función pipe del stream readableStream
 Readable.from.mockReturnValue({
   pipe: jest.fn().mockReturnThis(),
   on: jest.fn((event, callback) => {

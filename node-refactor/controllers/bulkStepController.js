@@ -40,7 +40,7 @@ module.exports = {
     const fileBuffer = req.file.buffer;
     const readableStream = Readable.from([fileBuffer]);
 
-    // Procesa el archivo CSV
+
     readableStream
       .pipe(csv())
       .on('data', (data) => {
@@ -51,7 +51,7 @@ module.exports = {
             listingId: listingId,
           };
       
-          // Agregar el paso al array de steps
+          
           steps.push(step);
           
       })
@@ -60,9 +60,9 @@ module.exports = {
         return res.status(200).send({ message: 'CSV process' });
       })
       .on('error', (error) => {
-        // Ocurrió un error durante la lectura del archivo
+
         console.error('Error read the file:', error);
-        // Responder al cliente con un mensaje de error
+        
         res.status(500).send({ message: 'Error read the file' });
       });
     } catch (error) {
