@@ -13,7 +13,7 @@ Antes de comenzar, asegúrate de tener instalados los siguientes requisitos en t
 
 Sigue estos pasos para configurar el proyecto:
 
-1. Clona este repositorio en tu máquina local o descárgalo como archivo ZIP.
+1. Clona este repositorio en tu máquina local.
 
 2. Abre una terminal y navega hasta el directorio raíz del proyecto.
 
@@ -25,7 +25,7 @@ npm install
 
 4. Crea una base de datos PostgreSQL y asegúrate de tener los datos de conexión (nombre de la base de datos, nombre de usuario y contraseña).
 
-5. Actualiza los archivos de configuración apropiados con la información de tu base de datos PostgreSQL. Esto puede incluir archivos como `config.js`, `database.js` o cualquier otro archivo de configuración relevante para tu proyecto.
+5. Actualiza los archivos de configuración apropiados con la información de tu base de datos PostgreSQL.
 
 6. Ejecuta el siguiente comando para iniciar la aplicación:
 
@@ -33,7 +33,7 @@ npm install
 npm run start
 ```
 
-7. La aplicación ahora está en funcionamiento. Puedes acceder a ella a través de tu navegador web visitando `http://localhost:8080` (o el puerto que hayas configurado en tu archivo de configuración).
+7. La aplicación esta levantada en `http://localhost:8080`.
 
 ## Endpoints
 
