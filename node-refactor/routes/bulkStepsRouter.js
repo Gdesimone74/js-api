@@ -4,7 +4,7 @@ const upload = multer({
     storage: multer.memoryStorage()
   });
 const router = express.Router();
-const controller = require('../controllers/bulkStepController');
+const controller = require('../controllers/listingController');
 const decodeTokenMiddleware = require('../middlewares/decodeTokenMiddleware');
   
 

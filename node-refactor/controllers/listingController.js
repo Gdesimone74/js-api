@@ -1,5 +1,6 @@
 const models  = require('../models');
-
+const csv = require('csv-parser');
+const { Readable } = require('stream');
 
 
 const selectQuery = () => {
@@ -34,199 +35,241 @@ const selectQuery = () => {
   return select
 }
 
-module.exports = {
-
-  update(req, res) {
-    if (!req.decoded || !req.decoded.user){
-      return res.status(400).send({
-        message: 'User Not Found',
-      });
+const findListingById = (listingId) => {
+  return models.Listing.findByPk(listingId).then((listing) => {
+    if (!listing) {
+      throw new Error('Listing Not Found');
     }
+    return listing;
+  });
+};
 
-    return models.Listing
-    .findByPk(req.params.listingId)
-    .then(listing => {
-      if (!listing) {
-        return res.status(404).send({
-          message: 'Listing Not Found',
-        });
+const checkListingAccess = (listing, decodedUser) => {
+  if (
+    listing.subsidiaryId != decodedUser.subsidiaryId &&
+    !decodedUser.authorities.includes('ROLE_EMPLOYEE')
+  ) {
+    throw new Error('Listing Not Found');
+  }
+};
+
+const updateListing = (listing, req) => {
+  return listing.update({
+    companyName: req.body.companyName || listing.companyName,
+    companyLogo: req.body.companyLogo || listing.companyLogo,
+    name: req.body.name || listing.name,
+    description: req.body.description || listing.description,
+    info: req.body.info || listing.info,
+    state: req.body.state || listing.state,
+    gs: req.body.gs || listing.gs,
+    criteria: req.body.criteria || listing.criteria,
+  });
+};
+
+function getListingSteps(listingId) {
+  return models.Step.findAll({
+    where: {
+      listingId: listingId,
+    },
+  })
+    .catch((error) => {
+      console.log(error);
+      throw new Error('Error al obtener los steps');
+    });
+}
+
+const createSteps = (listing, steps) => {
+  const bulkCreate = steps.map((step) => ({
+    listingId: listing.id,
+    flowId: step.flowId,
+    name: step.name,
+    step: step.step,
+  }));
+
+  return models.Step.bulkCreate(bulkCreate);
+};
+
+const deleteSteps = (deleted) => {
+  return models.Step.destroy({
+    where: {
+      id: deleted,
+    },
+  });
+};
+
+const updateSteps = (steps) => {
+  const changes = steps.filter((step) => step.id > 0);
+
+  const updatePromises = changes.map((step) => {
+    return models.Step.update(
+      {
+        name: step.name,
+        step: step.step,
+        flowId: step.flowId,
+      },
+      {
+        where: {
+          id: step.id,
+        },
       }
+    );
+  });
 
-      if (listing.subsidiaryId != req.decoded.user.subsidiaryId && !req.decoded.user.authorities.includes("ROLE_EMPLOYEE") ) {
-        return res.status(403).send({
-          message: 'Listing Not Found',
-        });
-      }
+  return Promise.all(updatePromises);
+};
 
-      return listing
-      .update({
-        companyName: req.body.companyName || listing.companyName,
-        companyLogo: req.body.companyLogo || listing.companyLogo,
-        name: req.body.name || listing.name,
-        description: req.body.description || listing.description,
-        info: req.body.info || listing.info,
-        state: req.body.state || listing.state,
-        gs: req.body.gs || listing.gs,
-        criteria: req.body.criteria || listing.criteria,
+const processCSVFile = (fileBuffer, listingId) => {
+  return new Promise((resolve, reject) => {
+    const steps = [];
+    const readableStream = Readable.from([fileBuffer]);
+
+    readableStream
+      .pipe(csv())
+      .on('data', (data) => {
+        const step = {
+          name: data.name,
+          step: data.step,
+          listingFlow: data.listingFlow,
+          listingId: listingId,
+        };
+
+        steps.push(step);
       })
+      .on('end', () => {
+        resolve(steps);
+      })
+      .on('error', (error) => {
+        reject(error);
+      });
+  });
+};
+
+const updateStepFromListing = (listing, cSteps, steps) => {
+  const clientSteps = cSteps;
+  let deleted = steps;
+
+  for (let i = 0, len = clientSteps.length; i < len; i++) {
+    deleted = deleted.filter((step) => step.id !== clientSteps[i].id);
+  }
+  deleted = deleted.map((step) => step.id);
+  console.log('deleted', deleted);
+
+  const newSteps = cSteps.filter((step) => step.id < 0);
+
+  return createSteps(listing, newSteps)
+    .then(() => deleteSteps(deleted))
+    .then(() => updateSteps(clientSteps))
+    .then(() => {
+      console.log('Steps updated');
+    })
+    .catch((error) => {
+      console.log(error);
+    });
+};
+
+function executeQuery(listingId) {
+  const requirements = { type: models.sequelize.QueryTypes.SELECT };
+  let query = '';
+  const select = selectQuery();
+  const where = `
+    WHERE
+      "Listing"."id" = ?
+  `;
+  requirements.replacements = [listingId];
+  query = select + where;
+
+  return models.sequelize.query(query, requirements);
+}
+
+function checkUserAuthorization(req, res) {
+  if (!req.decoded || !req.decoded.user) {
+    return res.status(400).send({
+      message: 'User Not Found',
+    });
+  }
+  return Promise.resolve();
+}
+
+module.exports = {
+  update(req, res) {
+    return checkUserAuthorization(req, res)
+      .then(() => findListingById(req.params.listingId))
       .then((listing) => {
-
-        models.Step.findAll({
-          where:{
-              listingId: listing.id
-          }
-        })
-        .then((steps) =>{
-
-          const clientSteps = req.body.steps;
-          let deleted = steps;
-          const changes = clientSteps ? clientSteps.filter(step => step.id > 0) : [];
-
-          const newSteps = clientSteps.filter( step => step.id < 0);
-          for (let i=0, len = clientSteps.length; i < len; i++){
-            deleted = deleted.filter( listingFlow => listingFlow.id !== clientSteps[i].id)
-          }
-          deleted = deleted.map(d => d.id)
-          console.log("deleted", deleted)
-          // first create the new steps
-          const bulkCreate = []
-          for (let i = 0, len = newSteps.length; i < len; i++) {
-            if (newSteps[i].id < 0){
-              bulkCreate.push({
-                listingId: listing.id,
-                flowId: newSteps[i].flowId,
-                name: newSteps[i].name,
-                step: newSteps[i].step,
-              })
-            }
-
-          }
-          if (bulkCreate && bulkCreate.length > 0){
-            models.Step.bulkCreate(bulkCreate)
-            .then(() => {
-              // second, delete the steps to be deleted
-              models.Step.destroy({
-                where: {
-                  id: deleted
-                }
-              })
-              .then(() => {
-                // update the remaining steps
-                Promise.all(changes.map((val, index) => {
-                  return models.Step.update(
-                    {
-                      name: val.name,
-                      step: val.step,
-                      flowId: val.flowId
-                    },{
-                      where:{
-                        id: val.id
-                      }
-                    })
-                }))
-                .then(()=>{
-                  const requirements = {type: models.sequelize.QueryTypes.SELECT}
-                  let query = ""
-
-                  const select = selectQuery()
-
-                  const where = `
-                  WHERE
-                    "Listing"."id" = ?
-                  `
-                  requirements.replacements = [listing.id];
-                  query = select + where
-
-                  return models.sequelize.query(query, requirements)
+        checkListingAccess(listing, req.decoded.user);
+        return updateListing(listing, req)
+          .then((listing) => {
+            return getListingSteps(listing.id)
+              .then((steps) => {
+                updateStepFromListing(listing, req.body.steps, steps);
+                return executeQuery(listing.id)
                   .then((listings) => res.status(200).send(listings[0]))
                   .catch((error) => {
-                    console.log(error)
-                    res.status(400).send(error)
+                    console.log(error);
+                    res.status(400).send(error);
                   });
-                })
-                .catch((error) => {
-                  console.log(error)
-                  res.status(400).send(error)
-                });
-
               })
               .catch((error) => {
-                console.log(error)
-                res.status(400).send(error)
+                console.log(error);
+                res.status(400).send(error);
               });
-            })
-            .catch((error) => {
-              console.log(error)
-              res.status(400).send(error)
-            });
-          } else {
-            // second, delete the steps to be deleted
-            models.Step.destroy({
-              where: {
-                id: deleted
-              }
-            })
-            .then(() => {
-              // update the remaining steps
-              Promise.all(changes.map((val, index) => {
-                return models.Step.update(
-                  {
-                    name: val.name,
-                    step: val.step,
-                    flowId: val.flowId
-                  },{
-                    where:{
-                      id: val.id
-                    }
-                  })
-              }))
-              .then(()=>{
-                const requirements = {type: models.sequelize.QueryTypes.SELECT}
-                let query = ""
-
-                const select = selectQuery()
-
-                const where = `
-                WHERE
-                  "Listing"."id" = ?
-                `
-                requirements.replacements = [listing.id];
-                query = select + where
-
-                return models.sequelize.query(query, requirements)
-                .then((listings) => res.status(200).send(listings[0]))
-                .catch((error) => {
-                  console.log(error)
-                  res.status(400).send(error)
-                });
-              })
-              .catch((error) => {
-                console.log(error)
-                res.status(400).send(error)
-              });
-
-            })
-            .catch((error) => {
-              console.log(error)
-              res.status(400).send(error)
-            });
-          }
-
-        })
-        .catch((error) => {
-          console.log(error)
-          res.status(400).send(error)
-        });
-
+          })
+          .catch((error) => {
+            console.log(error);
+            res.status(400).send(error);
+          });
       })
       .catch((error) => {
         console.log(error);
         res.status(400).send(error);
       });
-    })
-    .catch((error) => {
-      console.log(error);
-      res.status(400).send(error);
-    });
   },
+
+
+  get(req, res) {
+    findListingById(req.params.listingId)
+      .then((listing) => res.json(listing))
+      .catch((error) => {
+        console.error('Error get liting:', error);
+        res.status(500).json({ error: 'server error' });
+      });
+  },
+
+  createBulkSteps(req, res) {
+    return checkUserAuthorization(req, res)
+      .then(() => {
+        const listingId = req.params.listingId;
+  
+        return findListingById(listingId)
+          .then((listing) => {
+            checkListingAccess(listing, req.decoded.user);
+  
+            if (!req.file) {
+              return res.status(400).send({
+                message: 'CSV file not provided',
+              });
+            }
+
+            const fileBuffer = req.file.buffer;
+            return processCSVFile(fileBuffer, listingId)
+              .then((steps) => {
+                return createSteps(listing, steps)
+                  .then(() => {
+                    res.status(200).send({ message: 'CSV processed successfully' });
+                  })
+                  .catch((error) => {
+                    console.error('Error creating steps:', error);
+                    res.status(500).send({ message: 'Error creating steps' });
+                  });
+              })
+          })
+          .catch((error) => {
+            console.error(error);
+            res.status(500).send({ message: 'Server error' });
+          });
+      })
+      .catch((error) => {
+        console.error(error);
+        res.status(400).send({ message: 'User Not Found' });
+      });
+  }
 };
