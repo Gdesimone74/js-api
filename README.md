@@ -1,20 +1,99 @@
-# Emi Labs Challenge
+# Proyecto Node.js con Express y PostgreSQL
 
-Welcome to our technical challenge!
+Este proyecto es una aplicación Node.js que utiliza Express como framework web y PostgreSQL como base de datos.
 
-We're excited to have you here and hope this challenge to be a great opportunity for you to demonstrate your capabilities.
+## Requisitos
 
-Inside this repository, you'll find a folder for each exercise that we ask you to solve.  
+Antes de comenzar, asegúrate de tener instalados los siguientes requisitos en tu sistema:
 
-We wish you the best of luck and happy coding! 🙌
-## Doubts? Questions?
+- Node.js: [Descargar e instalar Node.js](https://nodejs.org)
+- PostgreSQL: [Descargar e instalar PostgreSQL](https://www.postgresql.org)
 
-Feel free to reach out to:
-- Pablo: pablo.giudice@emilabs.ai
-- Andy:  andy@emilabs.ai
-- Martin: martin@emilabs.ai
-- Sofi: sofia.cortes@emilabs.ai
-- Rodri: rodrigo.sevil@emilabs.ai
-- Feche: feche@emilabs.ai
-- Marin: marina.huberman@emilabs.ai
-- Gabi: gabriel.dalborgo@emilabs.ai
+## Configuración
+
+Sigue estos pasos para configurar el proyecto:
+
+1. Clona este repositorio en tu máquina local.
+
+2. Abre una terminal y navega hasta el directorio raíz del proyecto.
+
+3. Ejecuta el siguiente comando para instalar las dependencias del proyecto:
+
+```
+npm install
+```
+
+4. Crea una base de datos PostgreSQL y asegúrate de tener los datos de conexión (nombre de la base de datos, nombre de usuario y contraseña).
+
+5. Actualiza los archivos de configuración apropiados con la información de tu base de datos PostgreSQL.
+
+6. Ejecuta el siguiente comando para iniciar la aplicación:
+
+```
+npm run start
+```
+
+7. La aplicación esta levantada en `http://localhost:8080`.
+
+## Endpoints
+
+La aplicación expone los siguientes endpoints:
+
+- `GET /listings/:id`: Obtiene un listado específico desde la base de datos.
+
+Ejemplo de solicitud:
+
+```bash
+curl --location 'http://localhost:8080/listings/1'
+```
+
+- `PUT /update/:id`: Modifica un listado junto con sus steps en la base de datos.
+
+Ejemplo de solicitud:
+
+```bash
+curl --location --request PUT 'http://localhost:8080/update/1' \
+--header 'Content-Type: application/json' \
+--header 'Authorization: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWJzaWRhcnlJZCI6MSwiYXV0aG9yaXRpZXMiOlsiUk9MRV9FTVBMT1lFRSJdfQ.JVYcVGPFBSKX4crbwIT_HWo01_C0bdMjdYAbQOpqbHk' \
+--data '{
+      "companyName": "Nueva Empresa",
+      "name": "Nuevo Nombre",
+      "description": "Nueva Descripción",
+      "info": "Nueva Información",
+      "state": "Nuevo Estado",
+      "gs": "Nuevo GS",
+      "criteria": "Nuevos Criterios",
+      "steps": [
+        {
+          "id": -1,
+          "flowId": 123,
+          "name": "Paso 1",
+          "step": 1
+        },
+        {
+          "id": -2,
+          "flowId": 456,
+          "name": "Paso 2",
+          "step": 2
+        }
+      ]
+    
+  }'
+```
+- `POST /create/:id`: Pasa un archivo CSV y crea steps de manera masiva en la base de datos
+
+```
+curl --location 'http://localhost:8080/create/1' \
+--header 'Authorization: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWJzaWRhcnlJZCI6MSwiYXV0aG9yaXRpZXMiOlsiUk9MRV9FTVBMT1lFRSJdfQ.JVYcVGPFBSKX4crbwIT_HWo01_C0bdMjdYAbQOpqbHk' \
+--form 'file=@"file.csv"'
+```
+
+Ten en cuenta que algunos endpoints requieren autenticación utilizando JSON Web Tokens (JWT). Asegúrate de incluir el token de acceso válido en el encabezado de la solicitud.
+
+## Uso de JWT
+
+La aplicación utiliza JSON Web Tokens (JWT) para autenticar y autorizar las solicitudes. Para acceder a los endpoints protegidos, debes incluir un token de acceso válido en el encabezado de la solicitud.
+
+La clave utilizada para firmar y verificar los tokens es "challenge-gdesimone". Asegúrate de incluir este valor al generar y verificar los tokens JWT en tu código.
+
+Aclaracion: por el solo hecho de ser un challenge se sube a github el archivo .env que guarda la key para leer los tokens. En un proyecto real deberia este archivo estar en el file gitignore
